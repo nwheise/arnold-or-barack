@@ -150,7 +150,7 @@ def do_pca_and_build_model(name: str, roi_size: tuple, numbers: list):
     X = construct_data_matrix(name, roi_size, numbers)
 
     # perform pca on X
-    number_of_components = N
+    number_of_components = 5
     mean, eigenvalues, eigenvectors = pca(X, number_of_components)
 
     return [mean, eigenvalues, eigenvectors]
