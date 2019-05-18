@@ -6,20 +6,29 @@ import shutil
 
 
 def detect_and_save_faces(name, roi_size):
+    '''
+    Use haar cascades to detect the face in images in the folder specified
+    by the name parameter. Resize to roi_size and save the face image.
 
-    # define where to look for images and where to save the detected faces
-    dir_images = "data/{}".format(name)
-    dir_faces = "data/{}/faces".format(name)
-    if not os.path.isdir(dir_faces): os.makedirs(dir_faces)
+    Parameters
+    name: str, folder name containing images
+    roi_size: tuple, pixel dimensions for resized cropped face image
+    '''
+
+    # define source and output directories
+    dir_images = f'data/{name}'
+    dir_faces = f'data/{name}/faces'
+    if not os.path.isdir(dir_faces):
+        os.makedirs(dir_faces)
 
     # put all images in a list
-    names_images = [name for name in os.listdir(dir_images) if not name.startswith(".") and name.endswith(".jpg")]
+    image_names = image_names_in_dir(dir_images)
 
     # detect for each image the face and store this in the face directory with the same file name as the original image
     face_cascade = cv2.CascadeClassifier('data/haarcascade_frontalface_alt.xml')
-    for i in range(len(names_images)):
+    for i in range(len(image_names)):
         # Get image and convert to grayscale
-        img = cv2.imread(os.path.join(dir_images, names_images[i]))
+        img = cv2.imread(os.path.join(dir_images, image_names[i]))
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # Find the face and create an image of it
@@ -31,8 +40,24 @@ def detect_and_save_faces(name, roi_size):
         face_img = cv2.resize(face_img, roi_size, interpolation=cv2.INTER_CUBIC)
 
         # Save the face image in the face directory
-        cv2.imwrite(os.path.join(dir_faces, names_images[i]), face_img)
+        cv2.imwrite(os.path.join(dir_faces, image_names[i]), face_img)
 
+
+def image_names_in_dir(dir_name: str):
+    '''
+    Return a list of string names of all files in a directory with .jpg file
+    extension.
+
+    Parameters
+    dir_name: str, directory name
+    '''
+
+    image_names = []
+    for filename in os.listdir(dir_images):
+        if filename.endswith(".jpg"):
+            image_names.append(filename)
+
+    return image_names
 
 def visualize_roi_on_images(name):
 
@@ -43,7 +68,7 @@ def visualize_roi_on_images(name):
         os.makedirs(dir_images_with_roi)
 
     # put all images in a list
-    names_images = [name for name in os.listdir(dir_images) if not name.startswith(".") and name.endswith(".jpg")]
+    image_names = image_names_in_dir(dir_images)
 
     # detect for each image the face and draw a rectangle around it on the original image
     face_cascade = cv2.CascadeClassifier('data/haarcascade_frontalface_alt.xml')
