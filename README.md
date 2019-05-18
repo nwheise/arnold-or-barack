@@ -21,7 +21,5 @@ the face of Arnold and another for the face of Barack</li>
 </ol>
 
 ## Setup
-'''
-conda env update --file env.yml
+conda env update --file env.yml  
 source activate aob
-'''
