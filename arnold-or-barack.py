@@ -87,7 +87,7 @@ def visualize_roi_on_images(name: str):
     cascade_filepath = os.path.join(DATA_FOLDER, HAAR_CASCADE_FILENAME)
     face_cascade = cv2.CascadeClassifier(cascade_filepath)
 
-    # detect for each image the face and draw a rectangle around it on the original image
+    # detect for each image the face and draw a rectangle around it
     image_names = image_names_in_dir(dir_images)
     for i in range(len(image_names)):
         # Get image and convert to grayscale
@@ -112,32 +112,42 @@ def visualize_roi_on_images(name: str):
                     img_with_roi)
 
 
-def do_pca_and_build_model(name, roi_size, numbers):
-    '''
-
-    Parameters
-    name:
-    roi_size:
-    numbers:
-    '''
-
+def construct_data_matrix(name: str, roi_size: tuple, numbers: list):
     # define where to look for the detected faces
-    dir_faces = "data/{}/faces".format(name)
+    dir_faces = os.path.join(DATA_FOLDER, name, FACES_FOLDER)
 
     # put all faces in a list
-    names_faces = ["{}.jpg".format(n) for n in numbers]
+    names_faces = [f'{n}.jpg' for n in numbers]
 
-    # put all faces as data vectors in a N x P data matrix X with N the number of faces and P=roi_size[0]*roi_size[1] the number of pixels
-    N = len(names_faces)
-    P = roi_size[0]*roi_size[1]
+    # put all faces as data vectors in a data matrix X
+    N = len(names_faces) # number of faces
+    P = roi_size[0]*roi_size[1] # total number of pixels
     X = np.zeros(shape=(N, P))
 
     # For each image, place all rows of image data into one row of X
     for i in range(N):
         img = cv2.imread(os.path.join(dir_faces, names_faces[i]))
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        for j in range(gray_img.shape[0]):
-            X[i][ j*gray_img.shape[1] : (j+1)*gray_img.shape[1] ] = gray_img[j]
+
+        num_rows = gray_img.shape[0]
+        num_cols = gray_img.shape[1]
+        for row_num in range(num_rows):
+            X[i][(row_num*num_cols):(row_num+1)*num_cols] = gray_img[row_num]
+
+    return X
+
+def do_pca_and_build_model(name: str, roi_size: tuple, numbers: list):
+    '''
+    Build a matrix of the images given by the parameter numbers. Perform PCA
+    on the matrix and return the mean, eigenvalues, and eigenvectors.
+
+    Parameters
+    name: str, folder name containing images
+    roi_size: tuple, pixel dimensions for resized cropped face image
+    numbers: list, names of the files to be included in the model
+    '''
+
+    X = construct_data_matrix(name, roi_size, numbers)
 
     # perform pca on X
     number_of_components = N
@@ -148,34 +158,22 @@ def do_pca_and_build_model(name, roi_size, numbers):
 
 def test_images(name, roi_size, numbers, models):
     '''
+    Compare images given by the parameter numbers to the models via projection
+    and reconstruction. Return the reconstructions and the MSE between them
+    and the true images.
 
     Parameters
-    name:
-    roi_size:
-    numbers:
+    name: str, folder name containing images
+    roi_size: tuple, pixel dimensions for resized cropped face image
+    numbers: list, names of the files to be included in the model
     models:
     '''
 
-    # define where to look for the detected faces
-    dir_faces = "data/{}/faces".format(name)
-
-    # put all faces in a list
-    names_faces = ["{}.jpg".format(n) for n in numbers]
-
-    # put all faces as data vectors in a N x P data matrix X with N the number of faces and P=roi_size[0]*roi_size[1] the number of pixels
-    N = len(names_faces)
-    P = roi_size[0]*roi_size[1]
-    X = np.zeros(shape=(N, P))
-
-    # For each image, place all rows of image data into one row of X
-    for i in range(N):
-        img = cv2.imread(os.path.join(dir_faces, names_faces[i]))
-        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        for j in range(gray_img.shape[0]):
-            X[i][ j*gray_img.shape[1] : (j+1)*gray_img.shape[1] ] = gray_img[j]
+    X = construct_data_matrix(name, roi_size, numbers)
 
     # reconstruct the images in X with each of the models provided and also calculate the MSE
-    # store the results as [[results_model_arnold_reconstructed_X, results_model_arnold_MSE], [results_model_barack_reconstructed_X, results_model_barack_MSE]]
+    # store the results as [[results_model_arnold_reconstructed_X, results_model_arnold_MSE],
+    #                       [results_model_barack_reconstructed_X, results_model_barack_MSE]]
     results = []
     for model in models:
         # Get mean-subtracted images
