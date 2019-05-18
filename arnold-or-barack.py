@@ -7,10 +7,11 @@ import shutil
 
 DATA_FOLDER = 'data'
 FACES_FOLDER = 'faces'
+ROI_IMAGE_FOLDER = 'images_with_roi'
 HAAR_CASCADE_FILENAME = 'haarcascade_frontalface_alt.xml'
 
 
-def detect_and_save_faces(name, roi_size):
+def detect_and_save_faces(name: str, roi_size: tuple):
     '''
     Use haar cascades to detect the face in images in the folder specified
     by the name parameter. Resize to roi_size and save the face image.
@@ -26,21 +27,22 @@ def detect_and_save_faces(name, roi_size):
     if not os.path.isdir(dir_faces):
         os.makedirs(dir_faces)
 
-    # put all images in a list
-    image_names = image_names_in_dir(dir_images)
-
-    # detect for each image the face and store this in the face directory
+    # get face cascade for face detection
     cascade_filepath = os.path.join(DATA_FOLDER, HAAR_CASCADE_FILENAME)
     face_cascade = cv2.CascadeClassifier(cascade_filepath)
+
+    # detect for each image the face and store this in the face directory
+    image_names = image_names_in_dir(dir_images)
     for i in range(len(image_names)):
         # Get image and convert to grayscale
         img = cv2.imread(os.path.join(dir_images, image_names[i]))
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # Find the face and create an image of it
-        face = face_cascade.detectMultiScale(gray_img, 1.3, 5)
-        face = face[0]
-        face_img = img[ face[1]:face[1]+face[3], face[0]:face[0]+face[2] ]
+        faces = face_cascade.detectMultiScale(gray_img, 1.3, 5)
+        face = faces[0]
+        x, y, width, height = face[0], face[1], face[2], face[3]
+        face_img = img[y:y+height, x:x+width]
 
         # Rescale image to fit roi_size
         face_img = cv2.resize(face_img, roi_size, interpolation=cv2.INTER_CUBIC)
@@ -65,33 +67,43 @@ def image_names_in_dir(dir_name: str):
 
     return image_names
 
-def visualize_roi_on_images(name):
+
+def visualize_roi_on_images(name: str):
+    '''
+    Draw a rectangle around the detected faces in the images in the folder.
+    Save these images to another folder.
+
+    Parameters
+    name: str, folder name containing images
+    '''
 
     # define directories for finding images and saving the images with ROI's visualized
-    dir_images = "data/{}".format(name)
-    dir_images_with_roi = "data/{}/images_with_roi".format(name)
+    dir_images = os.path.join(DATA_FOLDER, name)
+    dir_images_with_roi = os.path.join(DATA_FOLDER, name, ROI_IMAGE_FOLDER)
     if not os.path.isdir(dir_images_with_roi):
         os.makedirs(dir_images_with_roi)
 
-    # put all images in a list
-    image_names = image_names_in_dir(dir_images)
+    # get face cascade for face detection
+    cascade_filepath = os.path.join(DATA_FOLDER, HAAR_CASCADE_FILENAME)
+    face_cascade = cv2.CascadeClassifier(cascade_filepath)
 
     # detect for each image the face and draw a rectangle around it on the original image
-    face_cascade = cv2.CascadeClassifier('data/haarcascade_frontalface_alt.xml')
+    image_names = image_names_in_dir(dir_images)
     for i in range(len(image_names)):
         # Get image and convert to grayscale
         img = cv2.imread(os.path.join(dir_images, image_names[i]))
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # Find the face
-        face = face_cascade.detectMultiScale(gray_img, 1.3, 5)
-        face = face[0]
+        faces = face_cascade.detectMultiScale(gray_img, 1.3, 5)
+        face = faces[0]
+        x, y, width, height = face[0], face[1], face[2], face[3]
 
-        # Overlay rectangle ROI on original image to visualize
+        # Overlay rectangle ROI on original image
         img_with_roi = np.copy(img)
         cv2.rectangle(img=img_with_roi,
-                      pt1=(face[0], face[1]),
-                      pt2=(face[0]+face[2], face[1]+face[3]),
+                      pt1=(x, y),
+                      pt2=(x+width, y+height),
                       color=(0, 255, 0),
                       thickness=2)
 
@@ -101,6 +113,13 @@ def visualize_roi_on_images(name):
 
 
 def do_pca_and_build_model(name, roi_size, numbers):
+    '''
+
+    Parameters
+    name:
+    roi_size:
+    numbers:
+    '''
 
     # define where to look for the detected faces
     dir_faces = "data/{}/faces".format(name)
@@ -128,6 +147,14 @@ def do_pca_and_build_model(name, roi_size, numbers):
 
 
 def test_images(name, roi_size, numbers, models):
+    '''
+
+    Parameters
+    name:
+    roi_size:
+    numbers:
+    models:
+    '''
 
     # define where to look for the detected faces
     dir_faces = "data/{}/faces".format(name)
@@ -163,6 +190,12 @@ def test_images(name, roi_size, numbers, models):
 
 
 def pca(X, number_of_components):
+    '''
+
+    Parameters
+    X:
+    number_of_components:
+    '''
 
     # Get the mean of each column of X
     mean = np.mean(X, axis=0)
@@ -198,6 +231,12 @@ def pca(X, number_of_components):
 
 
 def project_and_reconstruct(X, model):
+    '''
+
+    Parameters
+    X:
+    model:
+    '''
 
     # projection Z = XV
     projections = np.dot(X, model[2])
@@ -212,6 +251,13 @@ def project_and_reconstruct(X, model):
 
 
 def visualize_model(name, model, roi_size):
+    '''
+
+    Parameters
+    name:
+    model:
+    roi_size:
+    '''
 
     eig_vecs = model[2].T
     num_of_faces = eig_vecs.shape[0]
@@ -239,7 +285,15 @@ def visualize_model(name, model, roi_size):
                           eig_faces[i])
 
 
-def visualize_reconstructions(name, modelname, reconstructions, roi_size):
+def visualize_reconstructions(name, model_name, reconstructions, roi_size):
+    '''
+
+    Parameters
+    name:
+    model_name:
+    reconstructions:
+    roi_size:
+    '''
 
     num_of_recs = reconstructions.shape[0]
     dir_reconstructions = "data/{}/reconstructions".format(name)
@@ -247,7 +301,7 @@ def visualize_reconstructions(name, modelname, reconstructions, roi_size):
         os.makedirs(dir_reconstructions)
 
     # Make list of names
-    recface_names = [modelname + "reconstruction" + str(i) + ".png" for i in range(len(reconstructions))]
+    recface_names = [model_name + "reconstruction" + str(i) + ".png" for i in range(len(reconstructions))]
 
     # Make images from the reconstructions
     rec_faces = np.zeros( (num_of_recs, roi_size[0], roi_size[1]) )
@@ -311,19 +365,19 @@ def main():
     # the corresponding image out of it.                                                   #
     ########################################################################################
     visualize_reconstructions(name="arnold",
-                              modelname="arnold",
+                              model_name="arnold",
                               reconstructions=results_arnold[0][0],
                               roi_size=roi_size)
     visualize_reconstructions(name="arnold",
-                              modelname="barack",
+                              model_name="barack",
                               reconstructions=results_arnold[1][0],
                               roi_size=roi_size)
     visualize_reconstructions(name="barack",
-                              modelname="arnold",
+                              model_name="arnold",
                               reconstructions=results_barack[0][0],
                               roi_size=roi_size)
     visualize_reconstructions(name="barack",
-                              modelname="barack",
+                              model_name="barack",
                               reconstructions=results_barack[1][0],
                               roi_size=roi_size)
 
