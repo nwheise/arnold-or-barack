@@ -19,3 +19,9 @@ the face of Arnold and another for the face of Barack</li>
   the original and the reconstructed image</li>
   </ol>
 </ol>
+
+## Setup
+'''
+conda env update --file env.yml
+source activate aob
+'''
