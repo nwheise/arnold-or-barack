@@ -5,6 +5,11 @@ import scipy.misc
 import shutil
 
 
+DATA_FOLDER = 'data'
+FACES_FOLDER = 'faces'
+HAAR_CASCADE_FILENAME = 'haarcascade_frontalface_alt.xml'
+
+
 def detect_and_save_faces(name, roi_size):
     '''
     Use haar cascades to detect the face in images in the folder specified
@@ -16,16 +21,17 @@ def detect_and_save_faces(name, roi_size):
     '''
 
     # define source and output directories
-    dir_images = f'data/{name}'
-    dir_faces = f'data/{name}/faces'
+    dir_images = os.path.join(DATA_FOLDER, name)
+    dir_faces = os.path.join(DATA_FOLDER, name, FACES_FOLDER)
     if not os.path.isdir(dir_faces):
         os.makedirs(dir_faces)
 
     # put all images in a list
     image_names = image_names_in_dir(dir_images)
 
-    # detect for each image the face and store this in the face directory with the same file name as the original image
-    face_cascade = cv2.CascadeClassifier('data/haarcascade_frontalface_alt.xml')
+    # detect for each image the face and store this in the face directory
+    cascade_filepath = os.path.join(DATA_FOLDER, HAAR_CASCADE_FILENAME)
+    face_cascade = cv2.CascadeClassifier(cascade_filepath)
     for i in range(len(image_names)):
         # Get image and convert to grayscale
         img = cv2.imread(os.path.join(dir_images, image_names[i]))
@@ -53,8 +59,8 @@ def image_names_in_dir(dir_name: str):
     '''
 
     image_names = []
-    for filename in os.listdir(dir_images):
-        if filename.endswith(".jpg"):
+    for filename in os.listdir(dir_name):
+        if filename.endswith('.jpg'):
             image_names.append(filename)
 
     return image_names
@@ -72,9 +78,9 @@ def visualize_roi_on_images(name):
 
     # detect for each image the face and draw a rectangle around it on the original image
     face_cascade = cv2.CascadeClassifier('data/haarcascade_frontalface_alt.xml')
-    for i in range(len(names_images)):
+    for i in range(len(image_names)):
         # Get image and convert to grayscale
-        img = cv2.imread(os.path.join(dir_images, names_images[i]))
+        img = cv2.imread(os.path.join(dir_images, image_names[i]))
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # Find the face
@@ -90,7 +96,7 @@ def visualize_roi_on_images(name):
                       thickness=2)
 
         # Save to a new directory
-        cv2.imwrite(os.path.join(dir_images_with_roi, names_images[i]),
+        cv2.imwrite(os.path.join(dir_images_with_roi, image_names[i]),
                     img_with_roi)
 
 
