@@ -5,9 +5,13 @@ import scipy.misc
 import shutil
 
 
+ARNOLD_FOLDER = 'arnold'
+BARACK_FOLDER = 'barack'
 DATA_FOLDER = 'data'
 FACES_FOLDER = 'faces'
+EIGENFACE_FOLDER = 'eigfaces'
 ROI_IMAGE_FOLDER = 'images_with_roi'
+RECONSTRUCTION_FOLDER = 'reconstructions'
 HAAR_CASCADE_FILENAME = 'haarcascade_frontalface_alt.xml'
 
 
@@ -262,12 +266,13 @@ def visualize_model(name, model, roi_size):
 
     # Make a folder to save eigfaces to, or recreate it if already created
     # since we don't want eigenvalues from previous PCAs to remain
-    dir_eigfaces = "data/{}/eigfaces".format(name)
-    if os.path.isdir(dir_eigfaces): shutil.rmtree(dir_eigfaces)
+    dir_eigfaces = os.path.join(DATA_FOLDER, name, EIGENFACE_FOLDER)
+    if os.path.isdir(dir_eigfaces):
+        shutil.rmtree(dir_eigfaces)
     os.makedirs(dir_eigfaces)
 
     # Make list of names
-    eigface_names = ["eigface" + str(i) + ".png" for i in range(num_of_faces)]
+    eigface_names = [f'eigface_{str(i)}.png' for i in range(num_of_faces)]
 
     # Each eigenvector is an eigenface, so create images of these
     eig_faces = np.zeros(shape=(num_of_faces, roi_size[0], roi_size[1]))
@@ -294,12 +299,12 @@ def visualize_reconstructions(name, model_name, reconstructions, roi_size):
     '''
 
     num_of_recs = reconstructions.shape[0]
-    dir_reconstructions = "data/{}/reconstructions".format(name)
+    dir_reconstructions = os.path.join(DATA_FOLDER, name, RECONSTRUCTION_FOLDER)
     if not os.path.isdir(dir_reconstructions):
         os.makedirs(dir_reconstructions)
 
     # Make list of names
-    recface_names = [model_name + "reconstruction" + str(i) + ".png" for i in range(len(reconstructions))]
+    rec_face_names = [f'{model_name}_reconstruction_{str(i)}.png' for i in range(len(reconstructions))]
 
     # Make images from the reconstructions
     rec_faces = np.zeros( (num_of_recs, roi_size[0], roi_size[1]) )
@@ -311,71 +316,66 @@ def visualize_reconstructions(name, model_name, reconstructions, roi_size):
 
     # save images in the folder
     for i in range(num_of_recs):
-        scipy.misc.imsave(os.path.join(dir_reconstructions, recface_names[i]), rec_faces[i])
+        scipy.misc.imsave(os.path.join(dir_reconstructions, rec_face_names[i]), rec_faces[i])
 
 
 def main():
     roi_size = (50, 50)  # for reasonably quick computation time
 
-    # Detect all faces in all the images in the folder of a person (in this case "arnold" and "barack") and save them in a subfolder "faces" accordingly
-    detect_and_save_faces("arnold", roi_size=roi_size)
-    detect_and_save_faces("barack", roi_size=roi_size)
+    '''
+    Detect all faces in all the images in the folder of a person and save
+    them in a subfolder "faces" accordingly
+    '''
+    detect_and_save_faces(ARNOLD_FOLDER, roi_size=roi_size)
+    detect_and_save_faces(BARACK_FOLDER, roi_size=roi_size)
 
-    # visualize detected ROIs overlayed on the original images and copy paste these figures in a document 
-    ########################################################################################################################
-    # See function written above. The visualize_roi_on_images function follows almost exactly the detect_and_save_faces,   #
-    # but instead of cropping, resizing, and saving the face images it simply draws a rectangle over                       #
-    # the original images and saves them. It would be more efficient to include this in the detect_and_save_faces          #
-    # function, but for clarity for the assignment I wrote a new function to be called here.                               #
-    ########################################################################################################################
-    visualize_roi_on_images("arnold")
-    visualize_roi_on_images("barack")
+    # visualize detected ROIs overlayed on the original images
+    visualize_roi_on_images(ARNOLD_FOLDER)
+    visualize_roi_on_images(BARACK_FOLDER)
 
-    # Perform PCA on the previously saved ROIs and build a model=[mean, eigenvalues, eigenvectors] for the corresponding person's face making use of a training set
-    model_arnold = do_pca_and_build_model(name="arnold", roi_size=roi_size,
+    '''
+    Perform PCA on the previously saved ROIs and build a model
+    [mean, eigenvalues, eigenvectors] for the corresponding person's face
+    making use of a training set
+    '''
+    model_arnold = do_pca_and_build_model(name=ARNOLD_FOLDER, roi_size=roi_size,
                                           numbers=[1, 2, 3, 4, 5, 6])
-    model_barack = do_pca_and_build_model(name="barack", roi_size=roi_size,
+    model_barack = do_pca_and_build_model(name=BARACK_FOLDER, roi_size=roi_size,
                                           numbers=[1, 2, 3, 4, 5, 6])
 
     # visualize these models
-    ################################################################################################
-    # Each model can be visualized by its eigenfaces, which are images created by each eigenvector #
-    # in the model. These functions create each eigenface and save them in the directory           #
-    ################################################################################################
-    visualize_model("arnold", model_arnold, roi_size)
-    visualize_model("barack", model_barack, roi_size)
+    visualize_model(ARNOLD_FOLDER, model_arnold, roi_size)
+    visualize_model(BARACK_FOLDER, model_barack, roi_size)
 
-    # Test and reconstruct "unseen" images and check which model best describes it (wrt MSE)
-    # results=[[results_model_arnold_reconstructed_X, results_model_arnold_MSE], [results_model_barack_reconstructed_X, results_model_barack_MSE]]
-    # The correct model-person combination should give best reconstructed images and therefore the lowest MSEs
-    results_arnold = test_images(name="arnold",
+    '''
+    Test and reconstruct "unseen" images and check which model best describes it.
+    The correct model-person combination should give best reconstructed images
+    and therefore the lowest MSEs
+    '''
+    results_arnold = test_images(name=ARNOLD_FOLDER,
                                  roi_size=roi_size,
                                  numbers=[7, 8],
                                  models=[model_arnold, model_barack])
-    results_barack = test_images(name="barack",
+    results_barack = test_images(name=BARACK_FOLDER,
                                  roi_size=roi_size,
                                  numbers=[7, 8, 9, 10],
                                  models=[model_arnold, model_barack])
 
     # visualize the reconstructed images
-    ########################################################################################
-    # The function visualize_reconstructions simply takes each reconstruction, and creates #
-    # the corresponding image out of it.                                                   #
-    ########################################################################################
-    visualize_reconstructions(name="arnold",
-                              model_name="arnold",
+    visualize_reconstructions(name=ARNOLD_FOLDER,
+                              model_name=ARNOLD_FOLDER,
                               reconstructions=results_arnold[0][0],
                               roi_size=roi_size)
-    visualize_reconstructions(name="arnold",
-                              model_name="barack",
+    visualize_reconstructions(name=ARNOLD_FOLDER,
+                              model_name=BARACK_FOLDER,
                               reconstructions=results_arnold[1][0],
                               roi_size=roi_size)
-    visualize_reconstructions(name="barack",
-                              model_name="arnold",
+    visualize_reconstructions(name=BARACK_FOLDER,
+                              model_name=ARNOLD_FOLDER,
                               reconstructions=results_barack[0][0],
                               roi_size=roi_size)
-    visualize_reconstructions(name="barack",
-                              model_name="barack",
+    visualize_reconstructions(name=BARACK_FOLDER,
+                              model_name=BARACK_FOLDER,
                               reconstructions=results_barack[1][0],
                               roi_size=roi_size)
 
