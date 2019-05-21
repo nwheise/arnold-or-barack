@@ -242,7 +242,7 @@ def pca(X: np.ndarray, number_of_components: int):
     return [mean, eigenvalues, eigenvectors]
 
 
-def project_and_reconstruct(X: np.ndaray, model: list):
+def project_and_reconstruct(X: np.ndarray, model: list):
     '''
     Make projections by taking the dot product of the data with the eigenvectors
     of the model. Reconstruct from the projection by taking the dot product
