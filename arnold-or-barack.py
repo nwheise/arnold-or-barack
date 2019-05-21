@@ -117,6 +117,15 @@ def visualize_roi_on_images(name: str):
 
 
 def construct_data_matrix(name: str, roi_size: tuple, numbers: list):
+    '''
+    Flattens images and stacks them into a numpy array.
+
+    Parameters
+    name: str, folder name containing images
+    roi_size: tuple, pixel dimensions for resized cropped face image
+    numbers: list, filenames to be included in matrix
+    '''
+
     # define where to look for the detected faces
     dir_faces = os.path.join(DATA_FOLDER, name, FACES_FOLDER)
 
@@ -160,7 +169,7 @@ def do_pca_and_build_model(name: str, roi_size: tuple, numbers: list):
     return [mean, eigenvalues, eigenvectors]
 
 
-def test_images(name, roi_size, numbers, models):
+def test_images(name: str, roi_size: tuple, numbers: list, models: list):
     '''
     Compare images given by the parameter numbers to the models via projection
     and reconstruction. Return the reconstructions and the MSE between them
@@ -170,7 +179,7 @@ def test_images(name, roi_size, numbers, models):
     name: str, folder name containing images
     roi_size: tuple, pixel dimensions for resized cropped face image
     numbers: list, names of the files to be included in the model
-    models:
+    models: list of [mean, eigenvalues, eigenvectors] for face models
     '''
 
     X = construct_data_matrix(name, roi_size, numbers)
@@ -191,12 +200,13 @@ def test_images(name, roi_size, numbers, models):
     return results
 
 
-def pca(X, number_of_components):
+def pca(X: np.ndarray, number_of_components: int):
     '''
+    Perform principal component analysis on a data matrix X.
 
     Parameters
-    X:
-    number_of_components:
+    X: numpy array, flattened and stacked image data
+    number_of_components: int, number of components to retain
     '''
 
     # Get the mean of each column of X
@@ -232,12 +242,15 @@ def pca(X, number_of_components):
     return [mean, eigenvalues, eigenvectors]
 
 
-def project_and_reconstruct(X, model):
+def project_and_reconstruct(X: np.ndaray, model: list):
     '''
+    Make projections by taking the dot product of the data with the eigenvectors
+    of the model. Reconstruct from the projection by taking the dot product
+    of the project with the eigenvectors transpose.
 
     Parameters
-    X:
-    model:
+    X: numpy array, flattened and stacked image data
+    model: list, [mean, eigenvalues, eigenvectors] of model
     '''
 
     # projection Z = XV
@@ -252,13 +265,15 @@ def project_and_reconstruct(X, model):
     return [projections, reconstructions]
 
 
-def visualize_model(name, model, roi_size):
+def visualize_model(name: str, model: list, roi_size: tuple):
     '''
+    Create images from eigenvectors of the model (eigenfaces) and save them
+    to a directory.
 
     Parameters
-    name:
-    model:
-    roi_size:
+    name: str, folder name containing images
+    model: list, [mean, eigenvalues, eigenvectors] of model
+    roi_size: tuple, pixel dimensions for resized cropped face image
     '''
 
     eig_vecs = model[2].T
@@ -288,14 +303,17 @@ def visualize_model(name, model, roi_size):
                           eig_faces[i])
 
 
-def visualize_reconstructions(name, model_name, reconstructions, roi_size):
+def visualize_reconstructions(name: str, model_name: str,
+                              reconstructions: np.ndarray, roi_size: tuple):
     '''
+    Create images from reconstructions of images based on a model, and save
+    them into a directory.
 
     Parameters
-    name:
-    model_name:
-    reconstructions:
-    roi_size:
+    name: str, folder name containing images
+    model_name: str, name of model to compare images to
+    reconstructions: numpy array, reconstructions after projection
+    roi_size: tuple, pixel dimensions for resized cropped face image
     '''
 
     num_of_recs = reconstructions.shape[0]
@@ -321,17 +339,18 @@ def visualize_reconstructions(name, model_name, reconstructions, roi_size):
 
 def main():
     roi_size = (50, 50)  # for reasonably quick computation time
+    folders = [ARNOLD_FOLDER, BARACK_FOLDER]
 
-    '''
-    Detect all faces in all the images in the folder of a person and save
-    them in a subfolder "faces" accordingly
-    '''
-    detect_and_save_faces(ARNOLD_FOLDER, roi_size=roi_size)
-    detect_and_save_faces(BARACK_FOLDER, roi_size=roi_size)
+    for name in folders:
+        '''
+        Detect all faces in all the images in the folder of a person and save
+        them in a subfolder "faces" accordingly
+        '''
+        detect_and_save_faces(name=name, roi_size=roi_size)
 
-    # visualize detected ROIs overlayed on the original images
-    visualize_roi_on_images(ARNOLD_FOLDER)
-    visualize_roi_on_images(BARACK_FOLDER)
+        # visualize detected ROIs overlayed on the original images
+        visualize_roi_on_images(name=name)
+
 
     '''
     Perform PCA on the previously saved ROIs and build a model
